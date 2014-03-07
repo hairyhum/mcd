@@ -44,9 +44,9 @@ test_simple(_Config) ->
     [Bucket1, Bucket2, Bucket3] = mcd_cluster_sup:buckets(),
     [Key1, Value1, Key2, Value2, Key3, Value3] = ["id_" ++ integer_to_list(Id) || Id <- lists:seq(1, 6)],
     Data = [
-        {Bucket1, Key1, Value1},
-        {Bucket2, Key2, Value2},
-        {Bucket3, Key3, Value3}
+        {Bucket1, list_to_binary(Key1), list_to_binary(Value1)},
+        {Bucket2, list_to_binary(Key2), list_to_binary(Value2)},
+        {Bucket3, list_to_binary(Key3), list_to_binary(Value3)}
     ],
     Satisfier = fun
         (A, B, C) when A =/= waiting, B =/= waiting, C =/= waiting ->

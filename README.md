@@ -1,3 +1,12 @@
+Fork from original [EchoTeam/mcd](https://github.com/EchoTeam/mcd).
+
+This fork uses binary keys and values and sends them to memcached "as is", without modifications.
+This approach allows to use same data and same memcached instance from different languages.
+For example, one can put data to memcached from python and get them from erlang and vice versa.
+
+Original *mcd* library sees keys and values as erlang terms.
+And it modifies keys and values before sending them to memcached.
+
 
 # Erlang memcached client library.
 

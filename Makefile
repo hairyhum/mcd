@@ -7,7 +7,8 @@ PROJECTVERSION=1.1.0
 INSTALLDIR=$(LIBDIR)/$(PROJECTNAME)-$(PROJECTVERSION)/ebin
 LIBDIR=$(shell erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell)
 
-all: get-deps compile
+all:
+	$(REBAR) compile skip_deps=true
 
 compile:
 	$(REBAR) compile
@@ -15,10 +16,10 @@ compile:
 get-deps:
 	$(REBAR) get-deps
 
-test-unit: all
+test-unit:
 	$(REBAR) eunit skip_deps=true
 
-test-ct: all
+test-ct:
 	memcached -d
 	$(REBAR) ct skip_deps=true
 
@@ -38,6 +39,12 @@ distclean: clean
 install-lib:
 	mkdir -p $(INSTALLDIR)
 	for f in ebin/*.beam; do install $$f $(INSTALLDIR); done
+
+run:
+	ERL_LIBS=deps; erl -pa ebin
+
+d:
+	dialyzer --src src
 
 # Get rebar if it doesn't exist
 

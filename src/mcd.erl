@@ -1,4 +1,4 @@
-%%% 
+%%%
 %%% This module uses memcached protocol to interface memcached daemon:
 %%% http://code.sixapart.com/svn/memcached/trunk/server/doc/protocol.txt
 %%%
@@ -37,14 +37,14 @@
 %%%   {error, Reason}
 %%% Where:
 %%%   Command: set | add | replace
-%%%   Key: term()
-%%%   Data: term()
+%%%   Key: binary()
+%%%   Data: binary()
 %%%   Flags: int()>=0
 %%%   Expiration: int()>=0
 %%%   Value: int()>=0
 %%%   Time: int()>=0
 %%%   Reason: noconn | notfound | notstored | overload | timeout | noproc | all_nodes_down
-%%% 
+%%%
 -module(mcd).
 -behavior(gen_server).
 
@@ -113,8 +113,8 @@
 -type expiration() :: non_neg_integer().
 -type flags() :: 0..65535.
 
--type get_result() :: {'ok', term()} | {'error', get_errors()}.
--type set_result() :: {'ok', term()} | {'error', set_errors()}.
+-type get_result() :: {'ok', binary()} | {'error', get_errors()}.
+-type set_result() :: {'ok', binary()} | {'error', set_errors()}.
 -type delete_result() :: {'ok', 'deleted'} | {'error', delete_errors()}.
 -type flush_result() :: {'ok', 'flushed'} | {'error', common_errors()}.
 -type version_result() :: {'ok', nonempty_string()} | {'error', common_errors()}.
@@ -133,7 +133,7 @@
 -type key_data_command() :: 'set' | 'add' | 'replace'.
 -type key_data_request() :: key_data_command() | {key_data_command()} | {key_data_command(), flags(), expiration()}.
 
--type do_result() :: {'ok', term()} | {'error', get_errors() | set_errors() | delete_errors()}.
+-type do_result() :: {'ok', binary()} | {'error', get_errors() | set_errors() | delete_errors()}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Public API
@@ -180,13 +180,13 @@ do(ServerRef, SimpleRequest) when is_atom(SimpleRequest) ->
 do(ServerRef, SimpleRequest) when is_tuple(SimpleRequest) ->
 	do_forwarder(call, ServerRef, SimpleRequest).
 
--spec do(ServerRef :: server(), KeyRequest :: key_request(), Key :: term()) -> do_result().
+-spec do(ServerRef :: server(), KeyRequest :: key_request(), Key :: binary()) -> do_result().
 do(ServerRef, KeyRequest, Key) when is_atom(KeyRequest) ->
 	do_forwarder(call, ServerRef, {KeyRequest, Key});
 do(ServerRef, {KeyRequest}, Key) ->
 	do_forwarder(call, ServerRef, {KeyRequest, Key}).
 
--spec do(ServerRef :: server(), KeyDataReq :: key_data_request(), Key :: term(), Data :: term()) -> do_result().
+-spec do(ServerRef :: server(), KeyDataReq :: key_data_request(), Key :: binary(), Data :: binary()) -> do_result().
 do(ServerRef, KeyDataReq, Key, Data) when is_atom(KeyDataReq) ->
 	do_forwarder(call, ServerRef, {KeyDataReq, Key, Data});
 do(ServerRef, {Cmd}, Key, Data) ->
@@ -211,22 +211,22 @@ ldo(set, Key, Data, Flag, Expires) ->
 % </BC>
 
 %% These helper functions provide more self-evident API.
--spec get(ServerRef :: server(), Key :: term()) -> get_result().
+-spec get(ServerRef :: server(), Key :: binary()) -> get_result().
 get(ServerRef, Key) -> do(ServerRef, get, Key).
 
--spec set(ServerRef :: server(), Key :: term(), Data :: term()) -> set_result().
+-spec set(ServerRef :: server(), Key :: binary(), Data :: binary()) -> set_result().
 set(ServerRef, Key, Data) -> do(ServerRef, set, Key, Data).
 
--spec set(ServerRef :: server(), Key :: term(), Data :: term(), Expiration :: expiration()) -> set_result().
+-spec set(ServerRef :: server(), Key :: binary(), Data :: binary(), Expiration :: expiration()) -> set_result().
 set(ServerRef, Key, Data, Expiration) -> do(ServerRef, {set, 0, Expiration}, Key, Data).
 
--spec set(ServerRef :: server(), Key :: term(), Data :: term(), Expiration :: expiration(), Flags :: flags()) -> set_result().
+-spec set(ServerRef :: server(), Key :: binary(), Data :: binary(), Expiration :: expiration(), Flags :: flags()) -> set_result().
 % <BC>
 set(ServerRef, Key, Data, 0, Expiration) -> do(ServerRef, {set, 0, Expiration}, Key, Data);
 % </BC>
 set(ServerRef, Key, Data, Expiration, Flags) -> do(ServerRef, {set, Flags, Expiration}, Key, Data).
 
--spec delete(ServerRef :: server(), Key :: term()) -> delete_result().
+-spec delete(ServerRef :: server(), Key :: binary()) -> delete_result().
 delete(ServerRef, Key) -> do(ServerRef, delete, Key).
 
 -spec version(ServerRef :: server()) -> version_result().
@@ -237,16 +237,16 @@ version(ServerRef) -> do(ServerRef, version).
 -spec lserver() -> server().
 lserver() -> ?LOCALMCDNAME.
 
--spec lget(Key :: term()) -> get_result().
+-spec lget(Key :: binary()) -> get_result().
 lget(Key) -> get(?LOCALMCDNAME, Key).
 
--spec lset(Key :: term(), Data :: term()) -> set_result().
+-spec lset(Key :: binary(), Data :: binary()) -> set_result().
 lset(Key, Data) -> set(?LOCALMCDNAME, Key, Data).
 
--spec lset(Key :: term(), Data :: term(), Expiration :: expiration()) -> set_result().
+-spec lset(Key :: binary(), Data :: binary(), Expiration :: expiration()) -> set_result().
 lset(Key, Data, Expiration) -> set(?LOCALMCDNAME, Key, Data, Expiration).
 
--spec ldelete(Key :: term()) -> delete_result().
+-spec ldelete(Key :: binary()) -> delete_result().
 ldelete(Key) -> delete(?LOCALMCDNAME, Key).
 
 -spec lflush_all() -> flush_result().
@@ -259,16 +259,16 @@ set(Key, Data) -> lset(Key, Data).
 
 % async functions
 
--spec async_set(ServerRef :: server(), Key :: term(), Data :: term()) -> term().
+-spec async_set(ServerRef :: server(), Key :: binary(), Data :: binary()) -> binary().
 async_set(ServerRef, Key, Data) ->
 	do_forwarder(cast, ServerRef, {set, Key, Data}),
 	Data.
 
--spec async_set(ServerRef :: server(), Key :: term(), Data :: term(), Expiration :: expiration()) -> term().
+-spec async_set(ServerRef :: server(), Key :: binary(), Data :: binary(), Expiration :: expiration()) -> binary().
 async_set(ServerRef, Key, Data, Expiration) ->
 	async_set(ServerRef, Key, Data, Expiration, 0).
 
--spec async_set(ServerRef :: server(), Key :: term(), Data :: term(), Expiration :: expiration(), Flags :: flags()) -> term().
+-spec async_set(ServerRef :: server(), Key :: binary(), Data :: binary(), Expiration :: expiration(), Flags :: flags()) -> binary().
 % <BC>
 async_set(ServerRef, Key, Data, 0, Expiration) ->
 	do_forwarder(cast, ServerRef, {set, Key, Data, 0, Expiration}),
@@ -317,7 +317,7 @@ unload_connection(ServerRef) ->
 % gen_server callbacks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--record(state, { 
+-record(state, {
 	address, port = 11211, socket = nosocket,
 	receiver,		% data receiver process
 	requests = 0,		% client requests received
@@ -549,7 +549,7 @@ reconnect(#state{address = Address, port = Port, socket = OldSock} = State) ->
 
 	NewAnomalies = case is_atom(State#state.status) of
 		false -> State#state.anomalies;
-		true -> 
+		true ->
 			reportEvent(State, state, down),
 			incrAnomaly(State#state.anomalies, reconnects)
 	end,
@@ -576,9 +576,6 @@ compute_next_reconnect_delay(#state{status = Status}) ->
 	end.
 
 reconnector_process(MCDServerPid, Address, Port) ->
-	error_logger:info_msg("Creating interface ~p to memcached on ~p:~p~n",
-          [MCDServerPid, Address,Port]),
-
 	Socket = case gen_tcp:connect(Address, Port,
 			[{packet, line}, binary, {active, false}], 5000) of
 		{ ok, Sock } ->
@@ -613,11 +610,11 @@ scheduleQuery(State, _Query, From) ->
 			State
 	end.
 
-constructAndSendQuery(From, {'$constructed_query', _KeyMD5, {OTARequest, ReqType, ExpectationFlags}}, Socket, {RcvrPid, _}) ->
+constructAndSendQuery(From, {'$constructed_query', _Key1, {OTARequest, ReqType, ExpectationFlags}}, Socket, {RcvrPid, _}) ->
 	RcvrPid ! {accept_response, From, ReqType, ExpectationFlags},
 	gen_tcp:send(Socket, OTARequest);
 constructAndSendQuery(From, Query, Socket, {RcvrPid, _}) ->
-	{_MD5Key, OTARequest, ReqType} = constructMemcachedQuery(Query),
+	{_Key2, OTARequest, ReqType} = constructMemcachedQuery(Query),
 	RcvrPid ! {accept_response, From, ReqType, []},
 	gen_tcp:send(Socket, OTARequest).
 
@@ -626,10 +623,10 @@ constructAndSendQuery(From, Query, Socket, {RcvrPid, _}) ->
 %% or cast a message asynchronously, without waiting for the result.
 %%
 do_forwarder(Method, ServerRef, Req) ->
-	{KeyMD5, IOL, T} = constructMemcachedQuery(Req),
+	{Key, IOL, T} = constructMemcachedQuery(Req),
 	Q = iolist_to_binary(IOL),
 	try gen_server:Method(ServerRef,
-			{'$constructed_query', KeyMD5, {Q, T, [raw_blob]}}) of
+			{'$constructed_query', Key, {Q, T, [raw_blob]}}) of
 
 		% Return the actual Data piece which got stored on the
 		% server. Since returning Data happens inside the single
@@ -637,11 +634,7 @@ do_forwarder(Method, ServerRef, Req) ->
 		% returning {ok, stored} to successful set/add/replace commands.
 		{ok, stored} when T == rtCmd -> {ok, element(3, Req)};
 
-		% Memcached returns a blob which needs to be converted
-		% into to an Erlang term. It's better to do it in the requester
-		% process space to avoid inter-process copying of potentially
-		% complex data structures.
-		{ok, {'$value_blob', B}} -> {ok, binary_to_term(B)};
+		{ok, {'$value_blob', B}} -> {ok, B};
 
 		Response -> Response
 	catch
@@ -651,16 +644,10 @@ do_forwarder(Method, ServerRef, Req) ->
 			{error, noproc}
 	end.
 
-%% Convert arbitrary Erlang term into memcached key
-%% @spec md5(term()) -> binary()
-%% @spec b64(binary()) -> binary()
-md5(Key) -> erlang:md5(term_to_binary(Key)).
-b64(Key) -> base64:encode(Key).
-
 %% Translate a query tuple into memcached protocol string and the
 %% atom suggesting a procedure for parsing memcached server response.
 %%
-%% @spec constructMemcachedQuery(term()) -> {md5(), iolist(), ResponseKind}
+%% @spec constructMemcachedQuery(term()) -> {binary(), iolist(), ResponseKind}
 %% Type ResponseKind = atom()
 %%
 constructMemcachedQuery({version}) -> {<<>>, [<<"version\r\n">>], rtVer};
@@ -677,23 +664,19 @@ constructMemcachedQuery({replace, Key, Data}) ->
 constructMemcachedQuery({replace, Key, Data, Flags, Expiration}) ->
 	constructMemcachedQueryCmd("replace", Key, Data, Flags, Expiration);
 constructMemcachedQuery({get, Key}) ->
-	MD5Key = md5(Key),
-	{MD5Key, ["get ", b64(MD5Key), "\r\n"], rtGet};
+	{Key, ["get ", Key, "\r\n"], rtGet};
 % <BC>
 constructMemcachedQuery({delete, Key, _}) ->
 	constructMemcachedQuery({delete, Key});
 % </BC>
 constructMemcachedQuery({delete, Key}) ->
-	MD5Key = md5(Key),
-	{MD5Key, ["delete ", b64(MD5Key), "\r\n"], rtDel};
+	{Key, ["delete ", Key, "\r\n"], rtDel};
 constructMemcachedQuery({incr, Key, Value})
 		when is_integer(Value), Value >= 0 ->
-	MD5Key = md5(Key),
-	{MD5Key, ["incr ", b64(MD5Key), " ", integer_to_list(Value), "\r\n"], rtInt};
+	{Key, ["incr ", Key, " ", integer_to_list(Value), "\r\n"], rtInt};
 constructMemcachedQuery({decr, Key, Value})
 		when is_integer(Value), Value >= 0 ->
-	MD5Key = md5(Key),
-	{MD5Key, ["decr ", b64(MD5Key), " ", integer_to_list(Value), "\r\n"], rtInt};
+	{Key, ["decr ", Key, " ", integer_to_list(Value), "\r\n"], rtInt};
 constructMemcachedQuery({flush_all, Expiration})
 		when is_integer(Expiration), Expiration >= 0 ->
 	{<<>>, ["flush_all ", integer_to_list(Expiration), "\r\n"], rtFlush};
@@ -704,7 +687,7 @@ constructMemcachedQuery({flush_all}) -> {<<>>, ["flush_all\r\n"], rtFlush}.
 %% their own category of commands (say, ternary command). These commads'
 %% construction is handled by this function.
 %%
-%% @spec constructMemcachedQuery(term()) -> {md5(), iolist(), ResponseKind}
+%% @spec constructMemcachedQuery(term()) -> {binary(), iolist(), ResponseKind}
 %% Type ResponseKind = atom()
 %%
 constructMemcachedQueryCmd(Cmd, Key, Data) ->
@@ -712,12 +695,10 @@ constructMemcachedQueryCmd(Cmd, Key, Data) ->
 constructMemcachedQueryCmd(Cmd, Key, Data, Flags, Exptime)
 	when is_list(Cmd), is_integer(Flags), is_integer(Exptime),
 	Flags >= 0, Flags < 65536, Exptime >= 0 ->
-	BinData = term_to_binary(Data),
-	MD5Key = md5(Key),
-	{MD5Key, [Cmd, " ", b64(MD5Key), " ", integer_to_list(Flags), " ",
+	{Key, [Cmd, " ", Key, " ", integer_to_list(Flags), " ",
 		integer_to_list(Exptime), " ",
-		integer_to_list(size(BinData)),
-		"\r\n", BinData, "\r\n"], rtCmd}.
+		integer_to_list(size(Data)),
+		"\r\n", Data, "\r\n"], rtCmd}.
 
 replyBack(anon, _) -> true;
 replyBack(From, Result) -> gen_server:reply(From, Result).
@@ -768,7 +749,7 @@ data_receiver_accept_response(rtGet, ExpFlags, Socket) ->
 		ok = inet:setopts(Socket, [{packet, line}]),
 		case proplists:get_value(raw_blob, ExpFlags) of
 			true -> {ok, {'$value_blob', Bin}};
-			_ -> {ok, binary_to_term(Bin)}
+			_ -> {ok, Bin}
 		end
 	end;
 data_receiver_accept_response(rtInt, _, Socket) ->
@@ -807,4 +788,3 @@ data_receiver_error_reason(<<"CLIENT_ERROR ", Reason/binary>>) ->
 
 data_receiver_error_reason(Code, Reason) ->
 	{error, {Code, [C || C <- binary_to_list(Reason), C >= $ ]}}.
-
